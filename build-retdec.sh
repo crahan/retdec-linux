@@ -22,7 +22,7 @@
 # Env overrides (all optional):
 #   REPO_URL   git URL to build from         (default: avast/retdec on GitHub)
 #   REF        branch / tag / commit          (default: master)
-#   WORKDIR    scratch + source checkout dir  (default: $HOME/retdec-build)
+#   WORKDIR    scratch + source checkout dir  (default: ./build next to script)
 #   OUTPUT_DIR where artifacts are written    (default: $WORKDIR/dist)
 #   JOBS       parallel compile jobs          (default: nproc)
 #   RUNTIME    podman | docker                (default: autodetect)
@@ -32,9 +32,11 @@
 #
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 REPO_URL="${REPO_URL:-https://github.com/avast/retdec.git}"
 REF="${REF:-master}"
-WORKDIR="${WORKDIR:-$HOME/retdec-build}"
+WORKDIR="${WORKDIR:-$SCRIPT_DIR/build}"
 OUTPUT_DIR="${OUTPUT_DIR:-$WORKDIR/dist}"
 JOBS="${JOBS:-$(nproc)}"
 IMAGE="${IMAGE:-retdec-build:ubuntu22.04}"
@@ -92,7 +94,7 @@ FROM $BASE_IMAGE
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential cmake git ca-certificates \
-        openssl libssl-dev python3 python3-dev python3-venv \
+        openssl libssl-dev python3 python3-dev python3-venv python-is-python3 \
         autoconf automake libtool pkg-config m4 zlib1g-dev \
         upx-ucl xz-utils file \
     && rm -rf /var/lib/apt/lists/*
@@ -134,7 +136,7 @@ log "Building RetDec (long step; ~tens of minutes the first time)"
 "$RUNTIME" run --rm \
 	-e JOBS="$JOBS" \
 	-v "$SRC":/src"$VOPT" \
-	-v "$INNER":/build.sh:ro"$VOPT" \
+	-v "$INNER":/build.sh:ro${VOPT:+,${VOPT#:}} \
 	"$IMAGE" bash /build.sh
 [ "$STOP_AFTER" = build ] && { log "STOP_AFTER=build — done (artifacts in $SRC/install)."; exit 0; }
 
