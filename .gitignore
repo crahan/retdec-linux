@@ -1,0 +1,2 @@
+# Build scratch dir + source checkout + artifacts (see build-retdec.sh)
+/build/
